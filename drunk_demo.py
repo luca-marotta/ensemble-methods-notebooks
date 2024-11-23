@@ -1,6 +1,7 @@
 import numpy as np
 import random
 from manim import *
+from scipy.optimize import line_search
 
 # for reproducibility
 np.random.seed(20241202)    
@@ -8,15 +9,15 @@ np.random.seed(20241202)
 def dumb_predict(target: np.array, dim: int = 3) -> np.array:
     return np.array([random.choice([1, -1]) for i in range(dim)])
 
-def simple_boosting(target: np.array, steps: int = 1000, learning_rate: float = 0.001, dim: int = 3) -> np.array:
+def simple_boosting(target: np.array, steps: int = 1000, learning_rate: float = 0.1, dim: int = 3) -> np.array:
 
     boosted_learners = np.zeros(shape=(steps+1,dim))
     for i in range(1, steps + 1):
         learner = dumb_predict(target=target, dim=dim)
         print(f"step {i}: new prediction {learner}")
         
-        boosted_learners[i,] = boosted_learners[i - 1,] + learning_rate * learner if np.inner(target, learner) >= 0 else boosted_learners[i - 1,] - learning_rate * learner
-        loss = np.sum(np.square(np.subtract(target, boosted_learners[i, ])))
+        boosted_learners[i,] = boosted_learners[i - 1,] + learning_rate * 0.1 * learner if np.inner(target, learner) >= 0 else boosted_learners[i - 1,] - learning_rate * learner
+        loss = np.sum((target - boosted_learners[i, ])**2)
         print(f"step {i}: boosted learner {boosted_learners[i, ]}. loss: {loss}")
 
         if loss < 0.05: 
@@ -117,6 +118,6 @@ ax.scatter([1], [-1], [-1])
 ani = animation.FuncAnimation(
     fig, update_path, 2000, fargs=(boosted_path, line), interval=1)
 
-ani.save("matplotlib_animation.gif", writer="pillow")
+# ani.save("matplotlib_animation.gif", writer="pillow")
 
 plt.show()
