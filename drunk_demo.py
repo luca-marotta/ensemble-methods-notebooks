@@ -1,123 +1,99 @@
 import numpy as np
 import random
-from manim import *
 from scipy.optimize import line_search
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
-# for reproducibility
-np.random.seed(20241202)    
 
 def dumb_predict(target: np.array, dim: int = 3) -> np.array:
     return np.array([random.choice([1, -1]) for i in range(dim)])
 
-def simple_boosting(target: np.array, steps: int = 1000, learning_rate: float = 0.1, dim: int = 3) -> np.array:
+def simple_boosting(target: np.array, steps: int = 1000, learner_weight: float = 1, dim: int = 3) -> np.array:
 
     boosted_learners = np.zeros(shape=(steps+1,dim))
     for i in range(1, steps + 1):
-        learner = dumb_predict(target=target, dim=dim)
-        print(f"step {i}: new prediction {learner}")
+        print(f"iteration {i}")
+        starting_learner = dumb_predict(target=target, dim=dim)
         
-        boosted_learners[i,] = boosted_learners[i - 1,] + learning_rate * 0.1 * learner if np.inner(target, learner) >= 0 else boosted_learners[i - 1,] - learning_rate * learner
+        def select_directional_boosted_learner(target, learner, current_boosted_learner):
+            print(f"boosting learner {learner}")
+            scaled_learner = learner_weight * learner
+            # choose lower loss between learner and learner with flipped direction
+            if (np.sum((target - (current_boosted_learner - scaled_learner))**2) < np.sum((target - (current_boosted_learner + scaled_learner))**2)):
+                boosted_learner = current_boosted_learner - scaled_learner
+                loss = np.sum((target - boosted_learner)**2)
+                print(f"flipped learner has lower loss {loss}. boosted learner {boosted_learner}")
+                return boosted_learner
+            
+            boosted_learner = current_boosted_learner + scaled_learner
+            loss = np.sum((target - boosted_learner)**2)
+            print(f"unflipped learner has lower loss {loss}. boosted learner {boosted_learner}")
+            return boosted_learner
+
+
+            boosted_learner = current_boosted_learner + learner_weight * learner
+            boosted_learner_flipped = current_boosted_learner - learner_weight * learner
+            boosted_learner_loss = 0.5 * np.sum((target - boosted_learner)**2)
+            boosted_learner_flipped_loss = 0.5 * np.sum((target - boosted_learner_flipped)**2)
+            print(f"boosted learner {boosted_learner} with loss {boosted_learner_loss}")
+            print(f"flipped boosted learner {boosted_learner_flipped} with loss {boosted_learner_flipped_loss}")
+            return boosted_learner if (boosted_learner_loss - boosted_learner_flipped_loss) <= 0 else boosted_learner_flipped
+
+
+        boosted_learners[i,] = select_directional_boosted_learner(target, starting_learner, boosted_learners[i - 1,])
         loss = np.sum((target - boosted_learners[i, ])**2)
         print(f"step {i}: boosted learner {boosted_learners[i, ]}. loss: {loss}")
 
-        if loss < 0.05: 
-            break
+        # if loss < 0.0001: 
+        #     break
 
 
-    return boosted_learners[1:i]
+    return boosted_learners
 
 
-boosting_steps = 10000
-learning_rate = 0.01
+boosting_steps = 1000
+learner_weight = 0.01
 shape = 3
 # target = np.ones(shape=shape)
 source = np.array([0, 0, 0])
-target = np.array([1, -1, -1])
+target = np.array([1, 1, -1])
 
 
 print(f"predict target {target} with {boosting_steps} steps")
 
-# predictions = simple_boosting(target=target, steps=boosting_steps, learning_rate=learning_rate)
-# sampling_step = int(predictions.shape[0] / 15)
+def update_lines(num, predicted_path, loss, lines):
+    lines[0].set_data_3d(predicted_path[:num, :].T)
+    lines[1].set_data(loss[:num,].T)
+    return lines
 
-# predictions = np.flip(predictions[-1::-sampling_step,], 0)
-
-# for prediction in predictions:
-#     print(prediction)
-
-
-# class GetAxisLabelsExample(ThreeDScene):
-#     def construct(self):
-#         self.set_camera_orientation(phi=50 * DEGREES, theta=-30 * DEGREES, zoom=0.8)
-#         axes = ThreeDAxes(
-#             x_range=[-2, 2, 0.5],
-#             y_range=[-2, 2, 0.5],
-#             z_range=[-2, 2, 0.5]
-#         )
-#         labels = axes.get_axis_labels(
-#             Text("x").scale(0.5), Text("y").scale(0.5), Text("z").scale(0.5)
-#         )
-
-#         source_x, source_y, source_z = source
-#         dot_1 = Dot3D(point=axes.coords_to_point(source_x, source_y, source_z), radius=0.05, color=RED)
-#         target_x, target_y, target_z = target
-#         dot_2 = Dot3D(point=axes.coords_to_point(target_x, target_y, target_z), radius=0.1, color=BLUE)
-
-#         self.add(axes, labels)
-#         self.play(Create(axes))
-#         self.wait(1)
-#         self.play(Create(dot_1), Create(dot_2))
-        
-#         line_start = source
-#         for prediction in predictions:
-#             x_0_, y_0, z_0 = line_start
-#             x, y, z = prediction
-#             # destination = Dot3D(point=axes.coords_to_point(x, y, z), radius=0.1, color=RED)
-#             line_end = prediction
-#             line_3d = Line3D(start=axes.coords_to_point(x_0_, y_0, z_0), end=axes.coords_to_point(x, y, z), color=RED, thickness=0.01)
-#             # self.play(dot_1.animate.move_to(destination))
-#             self.play(Create(line_3d))
-#             self.wait(0.0001)
-#             line_start = line_end
-
-
-import matplotlib.pyplot as plt
-import numpy as np
-
-import matplotlib.animation as animation
-
-# def random_walk(num_steps, max_step=0.05):
-#     """Return a 3D random walk as (num_steps, 3) array."""
-#     start_pos = np.random.random(3)
-#     steps = np.random.uniform(-max_step, max_step, size=(num_steps, 3))
-#     walk = start_pos + np.cumsum(steps, axis=0)
-#     return walk
-
-
-def update_path(num, prediction, line):
-    line.set_data_3d(prediction[:num, :].T)
-    return line
-
-boosted_path = simple_boosting(target=target, steps=boosting_steps, learning_rate=learning_rate)
+boosting_paths = simple_boosting(target=target, steps=boosting_steps, learner_weight=learner_weight)
+print(f"paths: {boosting_paths}")
+boosting_rmse = np.array([[i, np.sqrt(np.sum((target - boosted_path)**2))] for i, boosted_path in enumerate(boosting_paths)])
+print(f"losses: {boosting_rmse[:5, :]}")
 
 # Attaching 3D axis to the figure
-fig = plt.figure()
-ax = fig.add_subplot(projection="3d")
+fig = plt.figure(figsize=plt.figaspect(2.))
+ax_path = fig.add_subplot(2, 1, 1, projection="3d")
+ax_loss = fig.add_subplot(2, 1, 2)
+
 # Create line initially without data
-line = ax.plot([], [], [])[0]
+line_boost = ax_path.plot([], [], [])[0]
+line_loss = ax_loss.plot([0], [1])[0]
 
-
-print(line)
 # Setting the Axes properties
-ax.set(xlim3d=(-2, 2), xlabel='X')
-ax.set(ylim3d=(-2, 2), ylabel='Y')
-ax.set(zlim3d=(-2, 2), zlabel='Z')
-ax.scatter([1], [-1], [-1])
+ax_path.set(xlim3d=(0, 1.2), xlabel='x')
+ax_path.set(ylim3d=(0, 1.2), ylabel='y')
+ax_path.set(zlim3d=(0, -1.2), zlabel='z')
+ax_path.set_title('Boosting Path')
+ax_path.scatter(source[0], source[1], source[2])
+ax_path.scatter(target[0], target[1], target[2])
 
+ax_loss.set(xlim=(0,boosting_steps), xlabel='iteration')
+ax_loss.set(ylim=(0,np.sqrt(3)), ylabel='y (RMSE)')
+ax_loss.set_title('Root Mean Squared Error')
 # Creating the Animation object
-ani = animation.FuncAnimation(
-    fig, update_path, 2000, fargs=(boosted_path, line), interval=1)
-
-# ani.save("matplotlib_animation.gif", writer="pillow")
+ani_boosting = animation.FuncAnimation(
+    fig, update_lines, 1000, fargs=(boosting_paths, boosting_rmse, [line_boost, line_loss]), interval=10)
 
 plt.show()
+ani_boosting.save("matplotlib_animation.gif", writer="pillow")
