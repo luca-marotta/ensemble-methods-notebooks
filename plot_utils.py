@@ -83,3 +83,16 @@ def plot_2d_classifier(ax, X, y, predict_function, predict_args=None, predict_pr
     # Plot the data
     if plot_data:
         plot_2d_data(ax, X, y, s=s, xlabel=xlabel, ylabel=ylabel, title=title, legend=legend, colormap=colormap)
+                
+def predict_boosting(X, estimators):
+    """
+    prediction for classification ensembles
+    estimators: list of tuples: (estimator_weight, estimator)
+    """
+    pred = np.zeros((X.shape[0], ))
+
+    for a, h in estimators:
+        pred += a * h.predict(X)
+    y = np.sign(pred)
+
+    return y

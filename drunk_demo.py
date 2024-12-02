@@ -51,7 +51,7 @@ def simple_boosting(target: np.array, steps: int = 1000, learner_weight: float =
     return boosted_learners
 
 
-boosting_steps = 1000
+boosting_steps = 500
 learner_weight = 0.01
 shape = 3
 # target = np.ones(shape=shape)
@@ -72,21 +72,21 @@ boosting_rmse = np.array([[i, np.sqrt(np.sum((target - boosted_path)**2))] for i
 print(f"losses: {boosting_rmse[:5, :]}")
 
 # Attaching 3D axis to the figure
-fig = plt.figure(figsize=plt.figaspect(2.))
-ax_path = fig.add_subplot(2, 1, 1, projection="3d")
-ax_loss = fig.add_subplot(2, 1, 2)
-
-# Create line initially without data
-line_boost = ax_path.plot([], [], [])[0]
-line_loss = ax_loss.plot([0], [1])[0]
-
-# Setting the Axes properties
+fig = plt.figure(figsize=plt.figaspect(0.3))
+ax_path = fig.add_subplot(1, 2, 1, projection="3d")
 ax_path.set(xlim3d=(0, 1.2), xlabel='x')
 ax_path.set(ylim3d=(0, 1.2), ylabel='y')
 ax_path.set(zlim3d=(0, -1.2), zlabel='z')
-ax_path.set_title('Boosting Path')
 ax_path.scatter(source[0], source[1], source[2])
 ax_path.scatter(target[0], target[1], target[2])
+ax_path.set_title('Boosting Path')
+
+# Create line initially without data
+line_boost = ax_path.plot([], [], [])[0]
+
+ax_loss = fig.add_subplot(1, 2, 2)
+# Create line initially without data
+line_loss = ax_loss.plot([0], [1])[0]
 
 ax_loss.set(xlim=(0,boosting_steps), xlabel='iteration')
 ax_loss.set(ylim=(0,np.sqrt(3)), ylabel='y (RMSE)')
@@ -96,4 +96,4 @@ ani_boosting = animation.FuncAnimation(
     fig, update_lines, 1000, fargs=(boosting_paths, boosting_rmse, [line_boost, line_loss]), interval=10)
 
 plt.show()
-ani_boosting.save("matplotlib_animation.gif", writer="pillow")
+ani_boosting.save("boosting_intuition.gif", writer="pillow")
